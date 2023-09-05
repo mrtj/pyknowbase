@@ -62,6 +62,8 @@ setup(
     ],
     python_requires=">=3.7",
     install_requires=[
+        "pydantic>=2.3.0",
+        # "boto3>=1.28.40",
         # eg: "aspectlib==1.1.1", "six>=1.7",
     ],
     extras_require={
