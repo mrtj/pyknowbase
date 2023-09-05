@@ -11,10 +11,13 @@ class Article(BaseModel):
     metadata: Dict[str, Any] = {}
     last_modified: datetime = datetime.now(timezone.utc)
 
+
 Articles = RootModel[List[Article]]
+
 
 class KnowledgeBase(Mapping[str, Article]):
     name: str
+
 
 class MutableKnowledgeBase(KnowledgeBase, MutableMapping[str, Article]):
 
