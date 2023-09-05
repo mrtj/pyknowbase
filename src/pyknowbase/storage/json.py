@@ -7,7 +7,7 @@ from . import StrPath
 from .memory import InMemoryKnowledgeBase, MutableInMemoryKnowledgeBase
 from ..model import Articles
 
-class JSONFileKnowledgeBase(InMemoryKnowledgeBase):
+class JsonKnowledgeBase(InMemoryKnowledgeBase):
 
     _filepath: Path
 
@@ -21,7 +21,7 @@ class JSONFileKnowledgeBase(InMemoryKnowledgeBase):
             self._index = {}
 
 
-class MutableJSONFileKnowledgeBase(JSONFileKnowledgeBase, MutableInMemoryKnowledgeBase):
+class MutableJSONFileKnowledgeBase(JsonKnowledgeBase, MutableInMemoryKnowledgeBase):
 
     def save(self, **kwargs) -> None:
         articles = Articles(list(self._index.values()))

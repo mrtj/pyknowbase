@@ -3,10 +3,10 @@ from pathlib import Path
 
 from . import StrPath
 from .memory import InMemoryKnowledgeBase, MutableInMemoryKnowledgeBase
-from ..model import KnowledgeBase, MutableKnowledgeBase, Article, Articles
+from ..model import Articles
 
 
-class YamlFileKnowledgeBase(InMemoryKnowledgeBase):
+class YamlKnowledgeBase(InMemoryKnowledgeBase):
 
     _filepath: Optional[Path] = None
 
@@ -29,7 +29,7 @@ class YamlFileKnowledgeBase(InMemoryKnowledgeBase):
             self._index = {}
 
 
-class MutableYamlFileKnowledgeBase(YamlFileKnowledgeBase, MutableInMemoryKnowledgeBase):
+class MutableYamlKnowledgeBase(YamlKnowledgeBase, MutableInMemoryKnowledgeBase):
 
     def save(self):
         articles = Articles(list(self._index.values()))
