@@ -40,6 +40,6 @@ class MutableJSONFileKnowledgeBase(JSONFileKnowledgeBase, MutableKnowledgeBase):
     def __delitem__(self, __key: str) -> None:
         del self._index[__key]
 
-    def save(self) -> None:
+    def save(self, **kwargs) -> None:
         articles = Articles(list(self._index.values()))
-        self._filepath.write_text(articles.model_dump_json())
+        self._filepath.write_text(articles.model_dump_json(**kwargs))
