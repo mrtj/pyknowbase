@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from collections.abc import Mapping, MutableMapping
 
 from datetime import datetime, timezone
@@ -8,7 +8,7 @@ from pydantic import BaseModel, RootModel
 class Article(BaseModel):
     id: str
     text: str
-    metadata: Dict[str, Any] = {}
+    metadata: Optional[Dict[str, Any]] = None
     last_modified: datetime = datetime.now(timezone.utc)
 
 
