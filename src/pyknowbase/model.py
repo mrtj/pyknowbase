@@ -1,11 +1,15 @@
 from typing import Dict, Any, List
 from collections.abc import Mapping, MutableMapping
+
+from datetime import datetime, timezone
+
 from pydantic import BaseModel, RootModel
 
 class Article(BaseModel):
     id: str
     text: str
     metadata: Dict[str, Any] = {}
+    last_modified: datetime = datetime.now(timezone.utc)
 
 Articles = RootModel[List[Article]]
 
