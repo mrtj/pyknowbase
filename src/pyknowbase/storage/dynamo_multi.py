@@ -52,7 +52,8 @@ class DynamoMultiKnowledgeBaseCollection:
             kwargs.get("boto3_session")
             or boto3.Session()
         )
-        self.table = session.resource("dynamodb").Table(table_name)
+        self.dynamodb = session.resource("dynamodb")
+        self.table = self.dynamodb.Table(table_name)
 
     def __iter__(self) -> Iterator[KnowledgeBase]:
         return self._get_knowledge_bases()
@@ -63,6 +64,54 @@ class DynamoMultiKnowledgeBaseCollection:
             raise KeyError(f"Could not find knowledge base with name {__key}.")
         else:
             return kb
+
+    def create_table(self,
+        kwargs: Dict[str, Any] = {"BillingMode": "PAY_PER_REQUEST"},
+        gs_kwargs: Dict[str, Any] = {}
+    ) -> None:
+        self.dynamodb.create_table(
+            TableName = self.table_name,
+            KeySchema = [
+                {
+                    'AttributeName': self.table_pk,
+                    'KeyType': 'HASH'
+                },
+                {
+                    'AttributeName': self.table_sk,
+                    'KeyType': 'RANGE'
+                }
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    'IndexName': self.index_name,
+                    'KeySchema': [
+                        {
+                            'AttributeName': self.index_pk,
+                            'KeyType': 'HASH'
+                        }
+                    ],
+                    'Projection': {
+                        'ProjectionType': 'ALL'
+                    },
+                    **gs_kwargs  # type: ignore
+                }
+            ],
+            AttributeDefinitions = [
+                {
+                    'AttributeName': self.table_pk,
+                    'AttributeType': 'S'
+                },
+                {
+                    'AttributeName': self.table_sk,
+                    'AttributeType': 'S'
+                },
+                {
+                    'AttributeName': self.index_pk,
+                    'AttributeType': 'S'
+                }
+            ],
+            **kwargs
+        )
 
     def _get_knowledge_bases(self) -> Iterator[KnowledgeBase]:
         kwargs = { "IndexName": self.index_name }
