@@ -1,28 +1,19 @@
-from typing import Iterator, Dict, Optional
+from typing import Iterable, Iterator, Dict, List, Optional
 from pathlib import Path
 
 from pyknowbase.model import Article
 
-from . import StrPath
-from .memory import InMemoryKnowledgeBase, MutableInMemoryKnowledgeBase
+from .file import FileKnowledgeBase, MutableFileKnowledgeBase
 from ..model import Articles
 
-class JsonKnowledgeBase(InMemoryKnowledgeBase):
+class JsonKnowledgeBase(FileKnowledgeBase):
 
-    _filepath: Path
-
-    def __init__(self, filename: StrPath, name: Optional[str] = None) -> None:
-        self._filepath = Path(filename)
-        self.name = name or self._filepath.name
-        if self._filepath.is_file():
-            articles = Articles.model_validate_json(self._filepath.read_text()).root
-            self._index = { a.id: a for a in articles }
-        else:
-            self._index = {}
+    def load(self, **kwargs) -> List[Article]:
+        return Articles.model_validate_json(self.filepath.read_text(), **kwargs).root
 
 
-class MutableJSONFileKnowledgeBase(JsonKnowledgeBase, MutableInMemoryKnowledgeBase):
+class MutableJSONFileKnowledgeBase(JsonKnowledgeBase, MutableFileKnowledgeBase):
 
-    def save(self, **kwargs) -> None:
-        articles = Articles(list(self._index.values()))
-        self._filepath.write_text(articles.model_dump_json(**kwargs))
+    def do_save(self, articles: Iterable[Article], **kwargs) -> None:
+        arts =  Articles(list(articles))
+        self.filepath.write_text(arts.model_dump_json(**kwargs))
