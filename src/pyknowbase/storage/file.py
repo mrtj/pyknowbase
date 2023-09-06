@@ -8,7 +8,7 @@ from ..model import Article
 
 StrPath = Union[str, os.PathLike]
 
-class FileKnowledgeBase(ABC, InMemoryKnowledgeBase):
+class FileKnowledgeBase(InMemoryKnowledgeBase):
     """Abstract base class for knowledge bases that load the articles from a local file.
 
     The FileKnowledgeBase maintains a cache of the articles in the memory.

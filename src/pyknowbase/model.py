@@ -1,5 +1,6 @@
-from typing import Dict, Any, List, Optional
-from collections.abc import Mapping, MutableMapping
+from typing import Dict, Any, Iterator, List, Optional
+from abc import ABC, abstractmethod
+from collections.abc import Mapping, MutableMapping, Iterable
 
 from datetime import datetime, timezone
 
@@ -16,21 +17,41 @@ class Article(BaseModel):
 Articles = RootModel[List[Article]]
 
 
-class KnowledgeBase(Mapping[str, Article]):
+class KnowledgeBase(ABC, Iterable[Article]):
     """Abstract base class for knowledge bases.
 
-    A knowledge base should implement the Mapping protocol, and provide access to the articles
-    based on their identifier.
+    A knowledge base should implement the Iterable protocol, and provide access to the articles
+    based on their identifier via the __getitem__ method.
     """
     name: str
+    metadata: Dict[str, Any] = {}
+
+    @abstractmethod
+    def __getitem__(self, __key: str) -> Article:
+        ...
+
+    @abstractmethod
+    def __iter__(self) -> Iterator[Article]:
+        ...
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} name={self.name}, metadata={self.metadata}>"
 
 
 class MutableKnowledgeBase(KnowledgeBase, MutableMapping[str, Article]):
     """Abstract base class for mutable knowledge bases.
 
-    A mutable knowledge base can mutate the managed articles implementing the MutableMapping
-    protocol.
+    A mutable knowledge base can mutate the managed articles implementing the __setitem__ and
+    __getitem__ methods.
     """
+
+    @abstractmethod
+    def __setitem__(self, __key: str, __value: Article) -> None:
+        ...
+
+    @abstractmethod
+    def __delitem__(self, __key: str) -> None:
+        ...
 
     def add(self, article: Article) -> None:
         """Adds a new article to the knowledge base.
@@ -49,5 +70,5 @@ class MutableKnowledgeBase(KnowledgeBase, MutableMapping[str, Article]):
         Args:
             other (KnowledgeBase): The other knowledge base.
         """
-        for article in other.values():
+        for article in other:
             self.add(article)

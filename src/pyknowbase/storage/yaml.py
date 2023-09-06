@@ -25,6 +25,7 @@ class YamlKnowledgeBase(FileKnowledgeBase):
         data = self.yaml.safe_load(self.filepath.read_text())
         return Articles.model_validate(data).root
 
+
 class MutableYamlKnowledgeBase(YamlKnowledgeBase, MutableFileKnowledgeBase):
 
     def do_save(self, articles: Iterable[Article], **kwargs) -> None:

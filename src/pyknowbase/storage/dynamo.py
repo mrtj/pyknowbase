@@ -45,8 +45,8 @@ class DynamoKnowledgeBase(KnowledgeBase):
             )
         self._mapping = DynamoDBMapping(table_name=table_name)
 
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._mapping.keys())
+    def __iter__(self) -> Iterator[Article]:
+        return iter(self.values())
 
     def keys(self) -> KeysView[str]:
         return self._mapping.keys()
@@ -56,9 +56,6 @@ class DynamoKnowledgeBase(KnowledgeBase):
 
     def items(self) -> ItemsView[str, Article]:
         return DynamoKnowledgeBaseItemsView(self._mapping)
-
-    def __len__(self) -> int:
-        return len(self._mapping)
 
     def __getitem__(self, __key: str) -> Article:
         return self._mapping[__key]

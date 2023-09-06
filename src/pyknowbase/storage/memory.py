@@ -1,5 +1,7 @@
 from typing import Dict, Iterator
 
+from pyknowbase.model import Article
+
 from ..model import KnowledgeBase, MutableKnowledgeBase, Article
 
 class InMemoryKnowledgeBase(KnowledgeBase):
@@ -10,11 +12,8 @@ class InMemoryKnowledgeBase(KnowledgeBase):
         self.name = name
         self.index = {}
 
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.index.keys())
-
-    def __len__(self) -> int:
-        return len(self.index)
+    def __iter__(self) -> Iterator[Article]:
+        return iter(self.index.values())
 
     def __getitem__(self, __key: str) -> Article:
         return self.index[__key]
