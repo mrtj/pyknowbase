@@ -17,7 +17,7 @@ class Article(BaseModel):
 Articles = RootModel[List[Article]]
 
 
-class KnowledgeBase(ABC, Iterable[Article]):
+class KnowledgeBase(Iterable[Article]):
     """Abstract base class for knowledge bases.
 
     A knowledge base should implement the Iterable protocol, and provide access to the articles
@@ -26,19 +26,17 @@ class KnowledgeBase(ABC, Iterable[Article]):
     name: str
     metadata: Dict[str, Any] = {}
 
-    @abstractmethod
     def __getitem__(self, __key: str) -> Article:
-        ...
+        raise NotImplementedError("KnowledgeBase.__getitem__ is an abstract method.")
 
-    @abstractmethod
     def __iter__(self) -> Iterator[Article]:
-        ...
+        raise NotImplementedError("KnowledgeBase.__iter__ is an abstract method.")
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} name={self.name}, metadata={self.metadata}>"
 
 
-class MutableKnowledgeBase(KnowledgeBase, MutableMapping[str, Article]):
+class MutableKnowledgeBase(KnowledgeBase):
     """Abstract base class for mutable knowledge bases.
 
     A mutable knowledge base can mutate the managed articles implementing the __setitem__ and
