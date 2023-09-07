@@ -1,4 +1,5 @@
 from typing import Dict, Any, Iterator, Optional, Callable, cast
+from collections.abc import Iterable
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -20,6 +21,13 @@ def dynamodb_paginator(action: Callable, kwargs: Dict) -> Iterator[Dict]:
 
 
 class DynamoMultiKnowledgeBase(MutableKnowledgeBase):
+    """A knowledge base that exists in a DynamoDB table backed knowledge base collection.
+
+    Args:
+        collection (DynamoMultiKnowledgeBaseCollection): The collection that manages this kb.
+        name (str): The name of the knowledge base.
+        metadata (Optional[Dict[str, Any]]): Optional metadata of the collection.
+    """
 
     collection: "DynamoMultiKnowledgeBaseCollection"
 
@@ -48,12 +56,41 @@ class DynamoMultiKnowledgeBase(MutableKnowledgeBase):
         self.collection._delete_article(kb_name=self.name, article_id=__key)
 
 
-class DynamoMultiKnowledgeBaseCollection:
+class DynamoMultiKnowledgeBaseCollection(Iterable[MutableKnowledgeBase]):
+    """A collection of knowledge bases, backed by an AWS DynamoDB table.
+
+    You can create a collection even if the table does not exists yet. In this case the collection
+    can create the table for you with the create_table method.
+
+    The collection implements the Iterable protocol so you can iterate over the knowledge bases
+    of the collection::
+
+        kbs = DynamoMultiKnowledgeBaseCollection(...)
+        for knowledge_base in kbs:
+            print(knowledge_base)
+
+    The bracket [] accessors are also implemented for reading and writing. The key should be the
+    name of the knowledge base::
+
+        kb = kbs["my_knowledge_base"]
+
+    However, for creating a new knowledge base, you might prefer using the put_knowledge_base
+    method::
+
+        kbs.put_knowledge_base(kb_name="my_knowledge_base", metadata={ "foo": "bar" })
+
+    Delete a knowledge base with the del operator::
+
+        del kbs["my_knowledge_base"]
+
+    Args:
+        table_name (str): The name of the DynamoDB table backing this collection.
+    """
 
     table_name: str
     """The name of the DynamoDB table backing this collection."""
 
-    index_name: str
+    index_name: str = "gsi"
     """The name of the global secondary index of the table that manages knowledge base entities."""
 
     table_pk: str = "pk"
@@ -76,9 +113,8 @@ class DynamoMultiKnowledgeBaseCollection:
     article_metadata_attrib_name = "metadata"
     """The name of the article attribute that contains the metadata."""
 
-    def __init__(self, table_name: str, index_name: str, **kwargs) -> None:
+    def __init__(self, table_name: str, **kwargs) -> None:
         self.table_name = table_name
-        self.index_name = index_name
         session = (
             kwargs.get("boto3_session")
             or boto3.Session()
@@ -100,7 +136,7 @@ class DynamoMultiKnowledgeBaseCollection:
         self.put_knowledge_base(kb_name=__key, metadata=__value.metadata)
 
     def __delitem__(self, __key: str) -> None:
-        self._delete_knowledge_base(kb_name=__key, delete_articles=True)
+        self.delete_knowledge_base(kb_name=__key, delete_articles=True)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} table_name={self.table_name}>"
@@ -185,7 +221,18 @@ class DynamoMultiKnowledgeBaseCollection:
             metadata=item.get(self.kb_metadata_attrib_name),
         )
 
-    def put_knowledge_base(self, kb_name: str, metadata: Dict[str, Any] = {}) -> MutableKnowledgeBase:
+    def put_knowledge_base(
+            self, kb_name: str, metadata: Dict[str, Any] = {}
+        ) -> MutableKnowledgeBase:
+        """Creates or updates a knowledge base in the collection.
+
+        Args:
+            kb_name (str): The name of the knowledge base.
+            metadata (Dict[str, Any], optional): The metadata of the knowledge base. Defaults to {}.
+
+        Returns:
+            MutableKnowledgeBase: The newly created or updated knowledge base.
+        """
         item: Dict = {
             self.table_pk: kb_name,
             self.table_sk: self.kb_sk_value,
@@ -199,7 +246,14 @@ class DynamoMultiKnowledgeBaseCollection:
             metadata=metadata,
         )
 
-    def _delete_knowledge_base(self, kb_name: str, delete_articles: bool = False) -> None:
+    def delete_knowledge_base(self, kb_name: str, delete_articles: bool = True) -> None:
+        """Deletes a knowledge base from the collection.
+
+        Args:
+            kb_name (str): The name of the knowledge base.
+            delete_articles (bool, optional): Set to True to delete also all articles of the
+                knowledge base. Defaults to True.
+        """
         if delete_articles:
             with self.table.batch_writer() as batch:
                 query_kwargs = {
