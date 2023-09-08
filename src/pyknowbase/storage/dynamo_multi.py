@@ -44,7 +44,7 @@ class DynamoMultiKnowledgeBase(MutableKnowledgeBase):
         return self.collection._get_articles(kb_name=self.name)
 
     def __getitem__(self, __key: str) -> Article:
-        article = self.collection._get_article(kb_name=self.name, article_id=__key)
+        article = self.get_article(article_id=__key)
         if not article:
             raise KeyError(f"Could not find article with id {__key} in knowledge base {self.name}")
         return article
@@ -54,6 +54,15 @@ class DynamoMultiKnowledgeBase(MutableKnowledgeBase):
 
     def __delitem__(self, __key: str) -> None:
         self.collection._delete_article(kb_name=self.name, article_id=__key)
+
+    def get_article(self, article_id: str) -> Optional[Article]:
+        return self.collection._get_article(kb_name=self.name, article_id=article_id)
+
+    def put_article(self, article: Article) -> None:
+        self.collection._put_article(kb_name=self.name, article=article, article_id=article.id)
+
+    def del_article(self, article_id: str) -> None:
+        self.collection._delete_article(kb_name=self.name, article_id=article_id)
 
 
 class DynamoMultiKnowledgeBaseCollection(Iterable[MutableKnowledgeBase]):
@@ -123,10 +132,10 @@ class DynamoMultiKnowledgeBaseCollection(Iterable[MutableKnowledgeBase]):
         self.table = self.dynamodb.Table(table_name)
 
     def __iter__(self) -> Iterator[MutableKnowledgeBase]:
-        return self._get_knowledge_bases()
+        return self.get_knowledge_bases()
 
     def __getitem__(self, __key: str) -> MutableKnowledgeBase:
-        kb = self._get_knowledge_base(kb_name=__key)
+        kb = self.get_knowledge_base(kb_name=__key)
         if kb is None:
             raise KeyError(f"Could not find knowledge base with name {__key}.")
         else:
@@ -200,7 +209,7 @@ class DynamoMultiKnowledgeBaseCollection(Iterable[MutableKnowledgeBase]):
             **kwargs
         )
 
-    def _get_knowledge_bases(self) -> Iterator[MutableKnowledgeBase]:
+    def get_knowledge_bases(self) -> Iterator[MutableKnowledgeBase]:
         kwargs = { "IndexName": self.index_name }
         for item in dynamodb_paginator(self.table.scan, kwargs):
             yield DynamoMultiKnowledgeBase(
@@ -209,7 +218,7 @@ class DynamoMultiKnowledgeBaseCollection(Iterable[MutableKnowledgeBase]):
                 metadata=item.get(self.kb_metadata_attrib_name),
             )
 
-    def _get_knowledge_base(self, kb_name: str) -> Optional[MutableKnowledgeBase]:
+    def get_knowledge_base(self, kb_name: str) -> Optional[MutableKnowledgeBase]:
         kb_key = { self.table_pk: kb_name, self.table_sk: self.kb_sk_value }
         result = self.table.get_item(Key=kb_key)
         if "Item" not in result:
@@ -274,36 +283,40 @@ class DynamoMultiKnowledgeBaseCollection(Iterable[MutableKnowledgeBase]):
         print("delete key:", key)
         self.table.delete_item(Key=key)
 
+    def _article_from_item(self, item: Dict) -> Article:
+        data = {
+            "id": item[self.table_sk],
+            "text": item["text"],
+            "metadata": item.get(self.article_metadata_attrib_name),
+        }
+        if "last_modified" in item:
+            data["last_modified"] = item["last_modified"]
+        return Article.model_validate(data)
+
+    def _item_from_article(
+        self, kb_name: str, article: Article, article_id: Optional[str] = None
+    ) -> Dict[Any, Any]:
+        item = article.model_dump(mode="json")
+        a_id = item.pop("id")
+        article_id = article_id or a_id
+        item[self.table_pk] = kb_name
+        item[self.table_sk] = article_id
+        return item
+
     def _get_articles(self, kb_name: str) -> Iterator[Article]:
         kwargs = { "KeyConditionExpression": Key(self.table_pk).eq(kb_name) }
         for item in dynamodb_paginator(self.table.query, kwargs):
             if item[self.table_sk] == self.kb_sk_value:
                 continue
             else:
-                yield Article(
-                    id=item[self.table_sk],
-                    text=item["text"],
-                    metadata=item.get(self.article_metadata_attrib_name, {})
-                )
+                yield self._article_from_item(item)
 
     def _get_article(self, kb_name: str, article_id: str) -> Optional[Article]:
         response = self.table.get_item(Key={self.table_pk: kb_name, self.table_sk: article_id})
-        if "Item" not in response:
-            return None
-        else:
-            item = response["Item"]
-            return Article(
-                id=article_id,
-                text=cast(str, item["text"]),
-                metadata=cast(dict, item.get(self.article_metadata_attrib_name, {})),
-            )
+        return self._article_from_item(response["Item"]) if "Item" in response else None
 
     def _put_article(self, kb_name: str, article: Article, article_id: Optional[str] = None) -> None:
-        item = article.model_dump(mode="json")
-        a_id = item.pop("id")
-        article_id = article_id or a_id
-        item[self.table_pk] = kb_name
-        item[self.table_sk] = article_id
+        item = self._item_from_article(kb_name, article, article_id)
         self.table.put_item(Item=item)
 
     def _delete_article(self, kb_name, article_id: str) -> None:

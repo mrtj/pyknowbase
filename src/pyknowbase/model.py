@@ -1,17 +1,17 @@
 from typing import Dict, Any, Iterator, List, Optional
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, MutableMapping, Iterable
+from collections.abc import Iterable
 
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, RootModel, Field
 
 class Article(BaseModel):
     """Knowledge base article."""
     id: str
     text: str
-    metadata: Optional[Dict[str, Any]] = None
-    last_modified: datetime = datetime.now(timezone.utc)
+    metadata: Dict[str, Any] = {}
+    last_modified: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 Articles = RootModel[List[Article]]
